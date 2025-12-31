@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -10,10 +9,17 @@ pipeline {
         )
     }
 
+    environment {
+        # Nom de ton bucket S3 pour l'état Terraform
+        TF_BACKEND_BUCKET = "melissa-lab-terraform-state"
+        TF_REGION        = "us-east-1"
+        TERRAFORM_DIR    = "ecr-terraform"  // dossier contenant tes fichiers Terraform
+    }
+
     stages {
         stage('Checkout from Git') {
             steps {
-                echo 'Checking out Git repository...'
+                checkout scm
             }
         }
 
@@ -25,15 +31,20 @@ pipeline {
 
         stage('Terraform init') {
             steps {
-                dir('ecr-terraform') {
-                    sh 'terraform init --reconfigure'
+                dir("${TERRAFORM_DIR}") {
+                    sh """
+                    terraform init -reconfigure \\
+                        -backend-config="bucket=${TF_BACKEND_BUCKET}" \\
+                        -backend-config="key=ecr/terraform.tfstate" \\
+                        -backend-config="region=${TF_REGION}"
+                    """
                 }
             }
         }
 
         stage('Terraform validate') {
             steps {
-                dir('ecr-terraform') {
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform validate'
                 }
             }
@@ -41,7 +52,7 @@ pipeline {
 
         stage('Terraform plan') {
             steps {
-                dir('ecr-terraform') {
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform plan'
                 }
             }
@@ -52,7 +63,7 @@ pipeline {
                 expression { params.ACTION == 'apply' }
             }
             steps {
-                dir('ecr-terraform') {
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform apply -auto-approve'
                 }
             }
@@ -63,7 +74,7 @@ pipeline {
                 expression { params.ACTION == 'destroy' }
             }
             steps {
-                dir('ecr-terraform') {
+                dir("${TERRAFORM_DIR}") {
                     sh 'terraform destroy -auto-approve'
                 }
             }
