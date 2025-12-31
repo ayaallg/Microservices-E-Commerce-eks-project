@@ -5,27 +5,37 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['apply', 'destroy'],
-            description: '🔧 Select the Terraform action to perform'
+            description: 'Select Terraform action'
         )
     }
 
+    environment {
+        AWS_DEFAULT_REGION = "us-east-1"
+    }
+
     stages {
-        stage('Checkout from Git') {
+
+        stage('Checkout SCM') {
             steps {
-                echo 'Checking out Git repository...'
+                echo 'Cloning Git repository...'
+                checkout scm
             }
         }
 
         stage('Terraform version') {
             steps {
                 sh 'terraform --version'
+                sh 'aws sts get-caller-identity'
             }
         }
 
         stage('Terraform init') {
             steps {
                 dir('eks-terraform') {
-                    sh 'terraform init --reconfigure'
+                    sh '''
+                        unset AWS_PROFILE
+                        terraform init --reconfigure
+                    '''
                 }
             }
         }
@@ -59,13 +69,25 @@ pipeline {
 
         stage('Terraform destroy') {
             when {
-                expression { params.ACTION == 'destroy' }
+                allOf {
+                    expression { params.ACTION == 'destroy' }
+                    expression { currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause) != null }
+                }
             }
             steps {
                 dir('eks-terraform') {
                     sh 'terraform destroy -auto-approve'
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline executed successfully'
+        }
+        failure {
+            echo '❌ Pipeline failed – check logs'
         }
     }
 }
