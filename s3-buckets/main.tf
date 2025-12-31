@@ -2,34 +2,33 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_s3_bucket" "bucket1" {
-  bucket = "aluruarumullaa1"
+resource "aws_s3_bucket" "terraform_state" {
+  bucket = "ml-terraform-state-${random_id.suffix.hex}"
 
   tags = {
-    Name        = "aluruarumullaa1"
+    Name        = "terraform-state"
     Environment = "dev"
   }
 }
 
-resource "aws_s3_bucket_versioning" "bucket1_versioning" {
-  bucket = aws_s3_bucket.bucket1.id
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.terraform_state.id
+
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket" "bucket2" {
-  bucket = "arumullaaluruu1"
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption" {
+  bucket = aws_s3_bucket.terraform_state.id
 
-  tags = {
-    Name        = "arumullaaluruu1"
-    Environment = "dev"
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
   }
 }
 
-resource "aws_s3_bucket_versioning" "bucket2_versioning" {
-  bucket = aws_s3_bucket.bucket2.id
-  versioning_configuration {
-    status = "Enabled"
-  }
+resource "random_id" "suffix" {
+  byte_length = 4
 }

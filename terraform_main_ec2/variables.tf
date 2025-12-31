@@ -1,87 +1,59 @@
-
 variable "region" {
-  description = "AWS region"
-  type = string
+  type    = string
   default = "us-east-1"
 }
 
-variable "vpc-name" {
-  description = "VPC Name for our Jumphost server"
-  type = string
-  default = "Jumphost-vpc"
+variable "vpc_name" {
+  type    = string
+  default = "Lab-VPC"
 }
 
-variable "igw-name" {
-  description = "Internet Gate Way Name for our Jumphost server"
-  type = string
-  default = "Jumphost-igw"
+variable "subnet_public1" {
+  type    = string
+  default = "10.0.1.0/24"
 }
 
-variable "subnet-name1" {
-  description = "Public Subnet 1 Name"
-  type = string
-  default = "Public-Subnet-1"
+variable "subnet_public2" {
+  type    = string
+  default = "10.0.2.0/24"
 }
 
-variable "subnet-name2" {
-  description = "Subnet Name for our Jumphost server"
-  type = string
-  default = "Public-subnet2"
+variable "subnet_private1" {
+  type    = string
+  default = "10.0.3.0/24"
 }
 
-# Private subnet name variables
-variable "private_subnet_name1" {
-  description = "Private Subnet 1 Name"
-  type = string
-  default = "Private-subnet1"
+variable "subnet_private2" {
+  type    = string
+  default = "10.0.4.0/24"
 }
 
-variable "private_subnet_name2" {
-  description = "Private Subnet 2 Name"
-  type = string
-  default = "Private-subnet2"
-}
-
-variable "rt-name" {
-  description = "Route Table Name for our Jumphost server"
-  type = string
-  default = "Jumphost-rt"
-}
-
-variable "sg-name" {
-  description = "Security Group for our Jumphost server"
-  type = string
-  default = "Jumphost-sg"
-}
-
-
-variable "iam-role" {
-  description = "IAM Role for the Jumphost Server"
-  type = string
-  default = "Jumphost-iam-role1"
-}
-
-variable "ami_id" {
-  description = "AMI ID for the EC2 instance"
-  type        = string
-  default     = "ami-0150ccaf51ab55a51" // Replace with the latest AMI ID for your region
+variable "sg_name" {
+  type    = string
+  default = "Lab-SG"
 }
 
 variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t2.large"
+  type    = string
+  default = "t2.medium"
 }
 
 variable "key_name" {
-  description = "EC2 keypair"
-  type        = string
-  default     = "us-east-1"
+  type    = string
 }
 
 variable "instance_name" {
-  description = "EC2 Instance name for the jumphost server"
-  type        = string
-  default     = "Jumphost-server"
+  type    = string
+  default = "Lab-Jumphost"
 }
-#
+
+variable "lab_instance_profile" {
+  type    = string
+  default = "LabInstanceProfile"
+}
+
+variable "ami_id" {
+  type    = string
+  default = "ami-0c02fb55956c7d316" # Amazon Linux 2 LTS US-East-1
+}
+
