@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "471112686466"
-        ECR_REPO = "cartservice"        // ✅ Correct repo pour cartservice
+        ECR_REPO = "cartservice"                // ✅ Repo correct
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
@@ -23,7 +23,7 @@ pipeline {
         stage('Checkout from Git') {
             steps {
                 git branch: 'master',
-                    url: 'https://github.com/melbouls/Microservices-E-Commerce-eks-project.git'
+                    url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
         }
 
@@ -31,7 +31,14 @@ pipeline {
             steps {
                 dir('src/cartservice') {
                     sh '''
-                        docker system prune -f
+                        # Nettoyer les anciennes images / cache
+                        docker system prune -f || true
+
+                        # Build Docker
+                        if [ ! -f Dockerfile ]; then
+                            echo "Dockerfile introuvable dans $(pwd)"
+                            exit 1
+                        fi
                         docker build -t ${ECR_REPO}:latest .
                     '''
                 }
@@ -52,6 +59,10 @@ pipeline {
                 sh '''
                     docker tag ${ECR_REPO}:latest ${ECR_URI}:${BUILD_NUMBER}
                     docker push ${ECR_URI}:${BUILD_NUMBER}
+
+                    # Optionnel : tag latest pour tests rapides
+                    docker tag ${ECR_REPO}:latest ${ECR_URI}:latest
+                    docker push ${ECR_URI}:latest
                 '''
             }
         }
@@ -64,6 +75,7 @@ pipeline {
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
+                            # Remplacer l'image dans le YAML
                             sed -i "s#image:.*#image: ${ECR_URI}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
                             git add ${YAML_FILE}
@@ -72,6 +84,15 @@ pipeline {
                         '''
                     }
                 }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    # Appliquer le YAML sur ton cluster EKS
+                    kubectl apply -f kubernetes-files/${YAML_FILE} --context lab-eks-cluster
+                '''
             }
         }
     }
