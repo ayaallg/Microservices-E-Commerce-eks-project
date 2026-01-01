@@ -8,13 +8,17 @@ pipeline {
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
-        GIT_EMAIL = "melissa.boulsa@gmail.com"
+        GIT_EMAIL = "melissasaraboulsan@gmail.com"
         YAML_FILE = "productcatalogservice.yaml"
     }
 
-    stages {
+  stages {
 
-        stage('Clean Workspace') { steps { cleanWs() } }
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
 
         stage('Checkout from Git') {
             steps {
@@ -59,9 +63,11 @@ pipeline {
                         sh '''
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
+
                             sed -i "s#image:.*#image: ${ECR_URI}:${BUILD_NUMBER}#g" ${YAML_FILE}
+
                             git add ${YAML_FILE}
-                            git commit -m "Update ${ECR_REPO} image to ${BUILD_NUMBER}" || echo "No changes to commit"
+                            git commit -m "Update productcatalogservice image to ${BUILD_NUMBER}"
                             git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         '''
                     }
@@ -69,4 +75,4 @@ pipeline {
             }
         }
     }
-}
+}  

@@ -8,11 +8,11 @@ pipeline {
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
-        GIT_EMAIL = "melissa.boulsa@gmail.com"
+        GIT_EMAIL = "melissasaraboulsan@gmail.com"
         YAML_FILE = "adservice.yaml"
     }
 
-    stages {
+  stages {
 
         stage('Clean Workspace') {
             steps {
@@ -32,7 +32,6 @@ pipeline {
                 dir('src/adservice') {
                     sh '''
                         docker system prune -f
-                        docker container prune -f
                         docker build -t ${ECR_REPO}:latest .
                     '''
                 }
@@ -68,7 +67,7 @@ pipeline {
                             sed -i "s#image:.*#image: ${ECR_URI}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
                             git add ${YAML_FILE}
-                            git commit -m "Update ${ECR_REPO} image to ${BUILD_NUMBER}" || echo "No changes to commit"
+                            git commit -m "Update adservice image to ${BUILD_NUMBER}"
                             git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         '''
                     }
@@ -76,4 +75,4 @@ pipeline {
             }
         }
     }
-}
+}  
