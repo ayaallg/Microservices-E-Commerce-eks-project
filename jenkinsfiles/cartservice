@@ -8,7 +8,7 @@ pipeline {
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
-        GIT_EMAIL = "melissa.boulsa@gmail.com"
+        GIT_EMAIL = "melissasaraboulsan@gmail.com"
         YAML_FILE = "cartservice.yaml"
     }
 
@@ -29,7 +29,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('src/cartservice/src') {
+                dir('src/cartservice') {
                     sh '''
                         docker system prune -f
                         docker build -t ${ECR_REPO}:latest .
@@ -42,7 +42,7 @@ pipeline {
             steps {
                 sh '''
                     aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${ECR_URI%/*}
+                    | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                 '''
             }
         }
