@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "471112686466"
-        ECR_REPO = "emailservice"   // on réutilise le repo emailservice sur VocLab
+        ECR_REPO = "cartservice"        // ✅ Correct repo pour cartservice
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
@@ -42,7 +42,7 @@ pipeline {
             steps {
                 sh '''
                     aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    | docker login --username AWS --password-stdin ${ECR_URI}
                 '''
             }
         }
