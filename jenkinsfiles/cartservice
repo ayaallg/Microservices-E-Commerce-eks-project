@@ -7,8 +7,8 @@ pipeline {
         ECR_REPO = "cartservice"
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
-        GIT_USER = "arumullayaswanth"
-        GIT_EMAIL = "Yaswanth.arumulla@gmail.com"
+        GIT_USER = "melbouls"
+        GIT_EMAIL = "melissa.boulsa@gmail.com"
         YAML_FILE = "cartservice.yaml"
     }
 
@@ -23,7 +23,7 @@ pipeline {
         stage('Checkout from Git') {
             steps {
                 git branch: 'master',
-                    url: 'https://github.com/arumullayaswanth/Microservices-E-Commerce-eks-project.git'
+                    url: 'https://github.com/melbouls/Microservices-E-Commerce-eks-project.git'
             }
         }
 
