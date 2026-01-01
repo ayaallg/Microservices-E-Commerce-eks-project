@@ -4,8 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "471112686466"
-        # On réutilise le repo emailservice pour push sur VocLab
-        ECR_REPO = "emailservice"
+        ECR_REPO = "emailservice"   // on réutilise le repo emailservice sur VocLab
         ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
         GIT_REPO = "Microservices-E-Commerce-eks-project"
         GIT_USER = "melbouls"
@@ -65,7 +64,6 @@ pipeline {
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            # On met le bon YAML pour CartService
                             sed -i "s#image:.*#image: ${ECR_URI}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
                             git add ${YAML_FILE}
