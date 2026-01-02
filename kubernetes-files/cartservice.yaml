@@ -20,7 +20,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
       containers:
-      - name: server
+      - name: cartservice
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
