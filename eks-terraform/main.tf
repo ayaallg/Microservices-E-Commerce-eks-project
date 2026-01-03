@@ -18,7 +18,6 @@ data "aws_iam_role" "worker" {
 # VPC et Subnets
 # ----------------------------
 data "aws_vpc" "main" {
-  tags = {
    id = "vpc-0d3780d4d45cab53c"
 }
 
