@@ -19,8 +19,7 @@ data "aws_iam_role" "worker" {
 # ----------------------------
 data "aws_vpc" "main" {
   tags = {
-    Name = "Lab-VPC"
-  }
+   id = "vpc-0d3780d4d45cab53c"
 }
 
 data "aws_subnet" "subnet-1" {
