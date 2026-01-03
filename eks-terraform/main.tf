@@ -15,34 +15,28 @@ data "aws_iam_role" "worker" {
 }
 
 # ----------------------------
-# VPC et Subnets
+# VPC
 # ----------------------------
 data "aws_vpc" "main" {
-   id = "vpc-0d3780d4d45cab53c"
+  id = "vpc-0d3780d4d45cab53c"
 }
 
+# ----------------------------
+# Subnets (Sélectionnés pour la haute disponibilité)
+# ----------------------------
 data "aws_subnet" "subnet-1" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Public-Subnet-1"]
-  }
+  id = "subnet-0cfb1dd5b72c4e94d" # Zone us-east-1a
 }
 
 data "aws_subnet" "subnet-2" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Public-Subnet-2"]
-  }
+  id = "subnet-0788f44548be4a6bd" # Zone us-east-1b
 }
 
+# ----------------------------
+# Security Group
+# ----------------------------
 data "aws_security_group" "selected" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Jumphost-sg"]
-  }
+  id = "sg-0df9d13dd1e841420" # Ton Lab-SG
 }
 
 # ----------------------------
