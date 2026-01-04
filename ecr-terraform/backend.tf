@@ -6,12 +6,9 @@ terraform {
     }
   }
 
-  backend "s3" {
-  bucket = "melissa-lab-terraform-state"
-  key    = "ecr/terraform.tfstate"
-  region = "us-east-1"
-
-  }
+  # Ce bloc doit impérativement rester vide {}. 
+  # Jenkins injectera les valeurs (bucket, key, region) lors du "terraform init".
+  backend "s3" {}
 
   required_version = ">= 1.6.3"
 }

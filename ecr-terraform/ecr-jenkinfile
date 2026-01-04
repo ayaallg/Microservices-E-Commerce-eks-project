@@ -5,44 +5,38 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['apply', 'destroy'],
-            description: '🔧 Select the Terraform action to perform (apply = create/update, destroy = delete all)'
+            description: 'Sélectionnez l action Terraform'
         )
     }
 
     environment {
-        // Nom de ton bucket S3 pour l'état Terraform
-        TF_BACKEND_BUCKET = "melissa-lab-terraform-state"
-        TF_REGION        = "us-east-1"
-        TERRAFORM_DIR    = "ecr-terraform"  // dossier contenant tes fichiers Terraform
+        // Utilisation du bucket S3 qui existe déjà (vu dans tes logs précédents)
+        TF_BACKEND_BUCKET = "ml-terraform-state-73c66080" 
+        TF_REGION         = "us-east-1"
+        TERRAFORM_DIR     = "ecr-terraform"
     }
 
     stages {
-        stage('Checkout from Git') {
+        stage('Checkout Git') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Terraform version') {
-            steps {
-                sh 'terraform --version'
-            }
-        }
-
-        stage('Terraform init') {
+        stage('Terraform Init') {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     sh """
-                    terraform init -reconfigure \\
-                        -backend-config="bucket=${TF_BACKEND_BUCKET}" \\
-                        -backend-config="key=ecr/terraform.tfstate" \\
+                    terraform init -reconfigure \
+                        -backend-config="bucket=${TF_BACKEND_BUCKET}" \
+                        -backend-config="key=ecr/terraform.tfstate" \
                         -backend-config="region=${TF_REGION}"
                     """
                 }
             }
         }
 
-        stage('Terraform validate') {
+        stage('Terraform Validate') {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     sh 'terraform validate'
@@ -50,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Terraform plan') {
+        stage('Terraform Plan') {
             steps {
                 dir("${TERRAFORM_DIR}") {
                     sh 'terraform plan'
@@ -58,7 +52,7 @@ pipeline {
             }
         }
 
-        stage('Terraform apply') {
+        stage('Terraform Apply') {
             when {
                 expression { params.ACTION == 'apply' }
             }
@@ -69,7 +63,7 @@ pipeline {
             }
         }
 
-        stage('Terraform destroy') {
+        stage('Terraform Destroy') {
             when {
                 expression { params.ACTION == 'destroy' }
             }
@@ -79,5 +73,10 @@ pipeline {
                 }
             }
         }
+    }
+
+    post {
+        success { echo "✅ ECR Repositories gérés avec succès !" }
+        failure { echo "❌ Échec du pipeline, vérifiez les logs." }
     }
 }
