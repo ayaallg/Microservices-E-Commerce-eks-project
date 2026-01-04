@@ -69,11 +69,15 @@ pipeline {
 
         stage('Terraform destroy') {
             when {
-                allOf {
-                    expression { params.ACTION == 'destroy' }
-                    expression { currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause) != null }
+                // On utilise uniquement le paramètre ACTION sans appeler getRawBuild
+                expression { params.ACTION == 'destroy' }
+            }
+            steps {
+                dir("${TERRAFORM_DIR}") {
+                    sh 'terraform destroy -auto-approve'
                 }
             }
+        }
             steps {
                 dir('eks-terraform') {
                     sh 'terraform destroy -auto-approve'
