@@ -6,25 +6,23 @@ pipeline {
         IMAGE_NAME     = "frontend" 
         YAML_FILE      = "frontend.yaml"
 
-        // --- 2. CONFIGURATION DOCKER & GIT ---
-        DOCKER_USER    = "ayaallg" // Remplacez par le DockerHub de destination
+        // --- 2. CONFIGURATION DOCKER (VOTRE COMPTE) ---
+        DOCKER_USER    = "ayaallg" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
         
+        // --- 3. CONFIGURATION GIT (COMPTE DE VOTRE COPINE) ---
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
-        GIT_USER       = "melbouls" // Utilisateur GitHub de votre copine
+        GIT_USER       = "melbouls" 
         GIT_EMAIL      = "melissasaraboulsan@gmail.com"
     }
 
     stages {
         stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
+            steps { cleanWs() }
         }
 
         stage('Checkout from Git') {
             steps {
-                // Utilisation du repo de votre copine
                 git branch: 'master', 
                     url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
@@ -44,7 +42,6 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
                                      passwordVariable: 'DOCKER_PASS', 
                                      usernameVariable: 'DOCKER_ID')]) {
-                        
                         sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
                         sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
                         sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
@@ -57,22 +54,25 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 dir('kubernetes-files') {
+                    // ATTENTION : 'my-git-pattoken' doit être le Personal Access Token de melbouls
                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'GIT_TOKEN')]) {
                         sh """
-                            # Configuration Git
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            # SYNCHRONISATION (Crucial pour éviter les erreurs de Push)
-                            git pull https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master --rebase
+                            # On nettoie l'URL pour être sûr d'utiliser le TOKEN
+                            git remote set-url origin https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git
 
-                            # Mise à jour de l'image dans le YAML
+                            # Synchronisation
+                            git pull origin master --rebase
+
+                            # Modification du fichier
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
-                            # Commit et Push avec [skip ci] pour éviter les boucles infinies
+                            # Commit et Push
                             git add ${YAML_FILE}
                             git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
-                            git push https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
+                            git push origin master
                         """
                     }
                 }
@@ -81,11 +81,7 @@ pipeline {
     }
 
     post {
-        always {
-            sh "docker logout"
-        }
-        success {
-            echo "✅ Pipeline terminé avec succès pour ${IMAGE_NAME}"
-        }
+        always { sh "docker logout" }
+        success { echo "✅ Terminé avec succès !" }
     }
 }
