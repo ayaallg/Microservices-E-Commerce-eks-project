@@ -2,24 +2,17 @@ pipeline {
     agent any
 
     environment {
-        // --- 1. CONFIGURATION DU SERVICE ---
         IMAGE_NAME     = "frontend" 
         YAML_FILE      = "frontend.yaml"
-
-        // --- 2. CONFIGURATION DOCKER (VOTRE COMPTE) ---
         DOCKER_USER    = "ayaallg" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
-        
-        // --- 3. CONFIGURATION GIT (COMPTE DE VOTRE COPINE) ---
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
         GIT_USER       = "melbouls" 
         GIT_EMAIL      = "melissasaraboulsan@gmail.com"
     }
 
     stages {
-        stage('Clean Workspace') {
-            steps { cleanWs() }
-        }
+        stage('Clean Workspace') { steps { cleanWs() } }
 
         stage('Checkout from Git') {
             steps {
@@ -54,25 +47,21 @@ pipeline {
         stage('Update Kubernetes Manifest') {
             steps {
                 dir('kubernetes-files') {
-                    // ATTENTION : 'my-git-pattoken' doit être le Personal Access Token de melbouls
                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'GIT_TOKEN')]) {
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            # On nettoie l'URL pour être sûr d'utiliser le TOKEN
-                            git remote set-url origin https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git
-
-                            # Synchronisation
-                            git pull origin master --rebase
-
-                            # Modification du fichier
+                            # 1. Mise à jour du fichier
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
-                            # Commit et Push
+                            # 2. Préparation du commit
                             git add ${YAML_FILE}
                             git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
-                            git push origin master
+
+                            # 3. PUSH FORCÉ AVEC AUTHENTICITÉE EXPLICITE
+                            # Cette commande ignore la config 'origin' et injecte le token directement
+                            git push https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         """
                     }
                 }
@@ -82,6 +71,5 @@ pipeline {
 
     post {
         always { sh "docker logout" }
-        success { echo "✅ Terminé avec succès !" }
     }
 }
