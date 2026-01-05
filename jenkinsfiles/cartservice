@@ -2,15 +2,10 @@ pipeline {
     agent any
 
     environment {
-        // Nom du service et du fichier YAML
         IMAGE_NAME     = "cartservice" 
         YAML_FILE      = "cartservice.yaml"
-        
-        // Configuration Docker Hub
         DOCKER_USER    = "ayaallg" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
-        
-        // Configuration GitHub
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
         GIT_USER       = "ayaallg"
         GIT_EMAIL      = "aya.allag@univ-constantine2.dz"
@@ -23,9 +18,8 @@ pipeline {
             }
         }
 
-        stage('Checkout from Git') {
+        stage('Checkout Code') {
             steps {
-                // On s'assure de cloner VOTRE repository
                 git branch: 'master', 
                     url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
@@ -34,9 +28,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Correction : on entre dans le bon dossier du service
                     dir("src/${IMAGE_NAME}") {
-                        sh "docker build -t ${DOCKER_REPO}:latest ."
+                        // On spécifie le chemin du Dockerfile avec -f src/Dockerfile
+                        // Car pour cartservice (.NET), il est souvent dans un sous-dossier src
+                        sh "docker build -t ${DOCKER_REPO}:latest -f src/Dockerfile ."
                     }
                 }
             }
@@ -66,15 +61,14 @@ pipeline {
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            # 1. On récupère les mises à jour des autres services pour éviter les conflits
+                            # Synchronisation pour éviter l'erreur "rejected" si un autre pipeline a push
                             git pull https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master --rebase
 
-                            # 2. On met à jour l'image dans le fichier YAML
+                            # Mise à jour de l'image
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
-                            # 3. On push les changements
                             git add ${YAML_FILE}
-                            git commit -m "Update ${IMAGE_NAME} image to version ${BUILD_NUMBER} [skip ci]" || echo "No changes to commit"
+                            git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
                             git push https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         """
                     }
@@ -82,7 +76,7 @@ pipeline {
             }
         }
     }
-
+    
     post {
         always {
             sh "docker logout"
