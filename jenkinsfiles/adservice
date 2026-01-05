@@ -2,77 +2,90 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "us-east-1"
-        AWS_ACCOUNT_ID = "471112686466"
-        ECR_REPO = "adservice"
-        ECR_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
-        GIT_REPO = "Microservices-E-Commerce-eks-project"
-        GIT_USER = "melbouls"
-        GIT_EMAIL = "melissasaraboulsan@gmail.com"
-        YAML_FILE = "adservice.yaml"
+        // --- CONFIGURATION DOCKER HUB ---
+        DOCKER_USER    = "ayaallg" 
+        IMAGE_NAME     = "adservice" // À modifier pour chaque service (ex: emailservice, frontend...)
+        DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
+        
+        // --- CONFIGURATION GITHUB ---
+        GIT_REPO       = "Microservices-E-Commerce-eks-project"
+        GIT_USER       = "ayaallg"
+        GIT_EMAIL      = "aya.allag@univ-constantine2.dz"
+        YAML_FILE      = "adservice.yaml" // À modifier selon le service (ex: emailservice.yaml)
     }
 
-  stages {
-
+    stages {
         stage('Clean Workspace') {
             steps {
                 cleanWs()
             }
         }
 
-        stage('Checkout from Git') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/melbouls/Microservices-E-Commerce-eks-project.git'
+                // Récupère ton code depuis ton dépôt GitHub
+                git branch: 'master', 
+                    url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('src/adservice') {
-                    sh '''
-                        docker system prune -f
-                        docker build -t ${ECR_REPO}:latest .
-                    '''
+                script {
+                    // Entre dans le dossier src du service spécifique
+                    dir("src/${IMAGE_NAME}") {
+                        sh "docker build -t ${DOCKER_REPO}:latest ."
+                    }
                 }
             }
         }
 
-        stage('Login to ECR') {
+        stage('Push to Docker Hub') {
             steps {
-                sh '''
-                    aws ecr get-login-password --region ${AWS_REGION} \
-                    | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                '''
-            }
-        }
-
-        stage('Tag & Push Image to ECR') {
-            steps {
-                sh '''
-                    docker tag ${ECR_REPO}:latest ${ECR_URI}:${BUILD_NUMBER}
-                    docker push ${ECR_URI}:${BUILD_NUMBER}
-                '''
+                script {
+                    // Utilise l'ID 'docker-hub-creds' que tu as créé
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
+                                     passwordVariable: 'DOCKER_PASS', 
+                                     usernameVariable: 'DOCKER_ID')]) {
+                        
+                        // Connexion sécurisée et envoi de l'image
+                        sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
+                        sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
+                        sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
+                        sh "docker push ${DOCKER_REPO}:latest"
+                    }
+                }
             }
         }
 
         stage('Update Kubernetes Manifest') {
             steps {
+                // On suppose que tes fichiers .yaml sont dans un dossier nommé 'kubernetes-files'
                 dir('kubernetes-files') {
                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'GIT_TOKEN')]) {
-                        sh '''
+                        sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            sed -i "s#image:.*#image: ${ECR_URI}:${BUILD_NUMBER}#g" ${YAML_FILE}
+                            # Met à jour la ligne 'image:' dans ton fichier YAML
+                            sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
                             git add ${YAML_FILE}
-                            git commit -m "Update adservice image to ${BUILD_NUMBER}"
+                            git commit -m "Update ${IMAGE_NAME} image to ${DOCKER_REPO}:${BUILD_NUMBER} [skip ci]" || echo "No changes"
                             git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
-                        '''
+                        """
                     }
                 }
             }
         }
     }
-}  
+    
+    post {
+        success {
+            echo "✅ Félicitations Aya ! L'image est sur Docker Hub et GitHub est à jour."
+        }
+        failure {
+            echo "❌ Le pipeline a échoué. Vérifie la console Jenkins."
+        }
+    }
+}
