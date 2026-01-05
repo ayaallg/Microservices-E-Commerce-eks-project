@@ -1,4 +1,6 @@
-pipeline {
+
+
+     pipeline {
     agent any
 
     environment {
@@ -6,7 +8,8 @@ pipeline {
         IMAGE_NAME     = "cartservice" 
         YAML_FILE      = "cartservice.yaml"
 
-        // --- CONFIGURATION VOTRE COMPTE ---
+
+        // --- 2. CONFIGURATION FIXE ---
         DOCKER_USER    = "ayaallg" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
@@ -16,19 +19,24 @@ pipeline {
 
     stages {
         stage('Clean Workspace') {
-            steps { cleanWs() }
+            steps {
+                cleanWs()
+            }
         }
 
         stage('Checkout Code') {
             steps {
-                git branch: 'master', url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
+                git branch: 'master', 
+                    url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir("src/${IMAGE_NAME}") {
-                    sh "docker build -t ${DOCKER_REPO}:latest ."
+                script {
+                    dir("src/${IMAGE_NAME}") {
+                        sh "docker build -t ${DOCKER_REPO}:latest ."
+                    }
                 }
             }
         }
@@ -39,6 +47,7 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
                                      passwordVariable: 'DOCKER_PASS', 
                                      usernameVariable: 'DOCKER_ID')]) {
+                        
                         sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
                         sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
                         sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
@@ -53,12 +62,19 @@ pipeline {
                 dir('kubernetes-files') {
                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'GIT_TOKEN')]) {
                         sh """
+                            # Configurer Git
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
+
+                            # Synchroniser avec GitHub pour éviter l'erreur "rejected"
                             git pull https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master --rebase
+
+                            # Modifier le fichier YAML (Remplace image: par la nouvelle image)
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
+
+                            # Commit et Push
                             git add ${YAML_FILE}
-                            git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
+                            git commit -m "Update ${IMAGE_NAME} image to version ${BUILD_NUMBER} [skip ci]" || echo "No changes"
                             git push https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         """
                     }
@@ -66,4 +82,14 @@ pipeline {
             }
         }
     }
+    
+    post {
+        success {
+            echo "✅ Succès pour ${IMAGE_NAME}!"
+        }
+        failure {
+            echo "❌ Échec. Vérifiez les logs Jenkins."
+        }
+    }
 }
+
