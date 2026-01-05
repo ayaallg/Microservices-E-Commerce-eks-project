@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // --- CONFIGURATION ---
         IMAGE_NAME     = "cartservice" 
         YAML_FILE      = "cartservice.yaml"
         DOCKER_USER    = "ayaallg" 
@@ -25,22 +24,30 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir("src/${IMAGE_NAME}") {
-                    sh """
-                        # Recherche du Dockerfile (insensible à la casse)
-                        DF_PATH=\$(find . -maxdepth 2 -iname "Dockerfile" | head -n 1)
-                        
-                        if [ -z "\$DF_PATH" ]; then
-                            echo "❌ ERREUR : Dockerfile introuvable dans src/${IMAGE_NAME}"
-                            ls -R
-                            exit 1
-                        fi
+                script {
+                    // On cherche où se trouve le fichier .csproj pour définir le bon dossier racine
+                    def projectDir = sh(script: "find . -name 'cartservice.csproj' -exec dirname {} \\; | head -n 1", returnStdout: true).trim()
+                    
+                    if (!projectDir) {
+                        error "❌ Fichier cartservice.csproj introuvable dans le dépôt !"
+                    }
 
-                        echo "✅ Dockerfile trouvé ici : \$DF_PATH"
-                        
-                        # Construction de l'image à partir du répertoire du Dockerfile
-                        docker build -t ${DOCKER_REPO}:latest -f "\$DF_PATH" .
-                    """
+                    echo "✅ Dossier projet détecté : ${projectDir}"
+
+                    dir("${projectDir}") {
+                        sh """
+                            # On vérifie si le Dockerfile est ici ou dans un parent
+                            DF_PATH=\$(find . -maxdepth 2 -iname "Dockerfile" | head -n 1)
+                            
+                            if [ -z "\$DF_PATH" ]; then
+                                # Si pas trouvé dans le dossier du projet, on regarde un niveau au dessus
+                                DF_PATH="../Dockerfile"
+                            fi
+
+                            echo "🚀 Lancement du build avec Dockerfile: \$DF_PATH"
+                            docker build -t ${DOCKER_REPO}:latest -f "\$DF_PATH" .
+                        """
+                    }
                 }
             }
         }
@@ -67,14 +74,9 @@ pipeline {
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
-                            
-                            # Nettoyage et pull pour éviter les conflits
                             git remote set-url origin https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git
                             git pull origin master --rebase
-
-                            # Mise à jour du tag d'image
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
-
                             git add ${YAML_FILE}
                             git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
                             git push origin master
@@ -83,9 +85,5 @@ pipeline {
                 }
             }
         }
-    }
-
-    post {
-        always { sh "docker logout || true" }
     }
 }
