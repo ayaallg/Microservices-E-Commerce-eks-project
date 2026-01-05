@@ -1,6 +1,8 @@
 pipeline {
     agent any
+
     environment {
+        // --- CONFIGURATION ---
         DOCKER_USER    = "ayaallg" 
         IMAGE_NAME     = "checkoutservice" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
@@ -9,22 +11,47 @@ pipeline {
         GIT_EMAIL      = "aya.allag@univ-constantine2.dz"
         YAML_FILE      = "checkoutservice.yaml"
     }
+
     stages {
-        stage('Clean Workspace') { steps { cleanWs() } }
-        stage('Checkout Code') { steps { git branch: 'master', url: "https://github.com/${GIT_USER}/${GIT_REPO}.git" } }
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'master', url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                script {
-                    dir("src/${IMAGE_NAME}") {
-                        sh "docker build -t ${DOCKER_REPO}:latest ."
-                    }
+                dir("src/${IMAGE_NAME}") {
+                    sh """
+                        # Recherche dynamique du Dockerfile pour éviter l'erreur 'no such file'
+                        DF_PATH=\$(find . -maxdepth 2 -iname "Dockerfile" | head -n 1)
+                        
+                        if [ -z "\$DF_PATH" ]; then
+                            echo "❌ ERREUR : Dockerfile introuvable dans src/${IMAGE_NAME}"
+                            ls -R
+                            exit 1
+                        fi
+
+                        echo "✅ Dockerfile trouvé : \$DF_PATH"
+                        docker build -t ${DOCKER_REPO}:latest -f "\$DF_PATH" .
+                    """
                 }
             }
         }
+
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_ID')]) {
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
+                                     passwordVariable: 'DOCKER_PASS', 
+                                     usernameVariable: 'DOCKER_ID')]) {
+                        
                         sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
                         sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
                         sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
@@ -33,6 +60,7 @@ pipeline {
                 }
             }
         }
+
         stage('Update Kubernetes Manifest') {
             steps {
                 dir('kubernetes-files') {
@@ -40,14 +68,29 @@ pipeline {
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
+                            
+                            # Sécurisation de l'URL avec le Token
+                            git remote set-url origin https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git
+                            
+                            # Synchronisation avant modification
+                            git pull origin master --rebase
+
+                            # Mise à jour de l'image
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
+
                             git add ${YAML_FILE}
                             git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
-                            git push https://\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
+                            git push origin master
                         """
                     }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            sh "docker logout || true"
         }
     }
 }
