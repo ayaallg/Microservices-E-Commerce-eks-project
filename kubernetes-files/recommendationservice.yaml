@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: 471112686466.dkr.ecr.us-east-1.amazonaws.com/recommendationservice:latest
+        image: ayaallg/recommendationservice:1
         ports:
         - containerPort: 8080
         readinessProbe:
