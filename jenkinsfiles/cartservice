@@ -2,8 +2,11 @@ pipeline {
     agent any
 
     environment {
+        // --- CONFIGURATION DU SERVICE ---
         IMAGE_NAME     = "cartservice" 
         YAML_FILE      = "cartservice.yaml"
+
+        // --- CONFIGURATION VOTRE COMPTE ---
         DOCKER_USER    = "ayaallg" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
@@ -13,26 +16,19 @@ pipeline {
 
     stages {
         stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
+            steps { cleanWs() }
         }
 
         stage('Checkout Code') {
             steps {
-                git branch: 'master', 
-                    url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
+                git branch: 'master', url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    dir("src/${IMAGE_NAME}") {
-                        // On spécifie le chemin du Dockerfile avec -f src/Dockerfile
-                        // Car pour cartservice (.NET), il est souvent dans un sous-dossier src
-                        sh "docker build -t ${DOCKER_REPO}:latest -f src/Dockerfile ."
-                    }
+                dir("src/${IMAGE_NAME}") {
+                    sh "docker build -t ${DOCKER_REPO}:latest ."
                 }
             }
         }
@@ -43,7 +39,6 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
                                      passwordVariable: 'DOCKER_PASS', 
                                      usernameVariable: 'DOCKER_ID')]) {
-                        
                         sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
                         sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
                         sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
@@ -60,13 +55,8 @@ pipeline {
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
-
-                            # Synchronisation pour éviter l'erreur "rejected" si un autre pipeline a push
                             git pull https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master --rebase
-
-                            # Mise à jour de l'image
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
-
                             git add ${YAML_FILE}
                             git commit -m "Update ${IMAGE_NAME} image to ${BUILD_NUMBER} [skip ci]" || echo "No changes"
                             git push https://${GIT_USER}:\${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
@@ -74,12 +64,6 @@ pipeline {
                     }
                 }
             }
-        }
-    }
-    
-    post {
-        always {
-            sh "docker logout"
         }
     }
 }
