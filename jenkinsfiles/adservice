@@ -4,14 +4,14 @@ pipeline {
     environment {
         // --- CONFIGURATION DOCKER HUB ---
         DOCKER_USER    = "ayaallg" 
-        IMAGE_NAME     = "adservice" // À modifier pour chaque service (ex: emailservice, frontend...)
+        IMAGE_NAME     = "adservice" 
         DOCKER_REPO    = "${DOCKER_USER}/${IMAGE_NAME}"
         
         // --- CONFIGURATION GITHUB ---
         GIT_REPO       = "Microservices-E-Commerce-eks-project"
         GIT_USER       = "ayaallg"
         GIT_EMAIL      = "aya.allag@univ-constantine2.dz"
-        YAML_FILE      = "adservice.yaml" // À modifier selon le service (ex: emailservice.yaml)
+        YAML_FILE      = "adservice.yaml"
     }
 
     stages {
@@ -23,7 +23,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                // Récupère ton code depuis ton dépôt GitHub
+                // Récupère le code source
                 git branch: 'master', 
                     url: "https://github.com/${GIT_USER}/${GIT_REPO}.git"
             }
@@ -32,7 +32,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Entre dans le dossier src du service spécifique
+                    // Entre dans le dossier src pour construire l'image
                     dir("src/${IMAGE_NAME}") {
                         sh "docker build -t ${DOCKER_REPO}:latest ."
                     }
@@ -43,12 +43,12 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    // Utilise l'ID 'docker-hub-creds' que tu as créé
+                    // Utilise l'ID 'docker-hub-creds' avec ton nouveau token (Read/Write/Delete)
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', 
                                      passwordVariable: 'DOCKER_PASS', 
                                      usernameVariable: 'DOCKER_ID')]) {
                         
-                        // Connexion sécurisée et envoi de l'image
+                        // Connexion et envoi de l'image
                         sh "echo \${DOCKER_PASS} | docker login -u \${DOCKER_ID} --password-stdin"
                         sh "docker tag ${DOCKER_REPO}:latest ${DOCKER_REPO}:${BUILD_NUMBER}"
                         sh "docker push ${DOCKER_REPO}:${BUILD_NUMBER}"
@@ -60,18 +60,19 @@ pipeline {
 
         stage('Update Kubernetes Manifest') {
             steps {
-                // On suppose que tes fichiers .yaml sont dans un dossier nommé 'kubernetes-files'
+                // Entre dans le dossier où se trouve ton fichier adservice.yaml
                 dir('kubernetes-files') {
                     withCredentials([string(credentialsId: 'my-git-pattoken', variable: 'GIT_TOKEN')]) {
                         sh """
                             git config user.email "${GIT_EMAIL}"
                             git config user.name "${GIT_USER}"
 
-                            # Met à jour la ligne 'image:' dans ton fichier YAML
+                            # Remplace l'image ECR par ton image Docker Hub
+                            # Le symbole # est utilisé comme séparateur pour éviter les conflits avec les /
                             sed -i "s#image:.*#image: ${DOCKER_REPO}:${BUILD_NUMBER}#g" ${YAML_FILE}
 
                             git add ${YAML_FILE}
-                            git commit -m "Update ${IMAGE_NAME} image to ${DOCKER_REPO}:${BUILD_NUMBER} [skip ci]" || echo "No changes"
+                            git commit -m "Update ${IMAGE_NAME} image to ${DOCKER_REPO}:${BUILD_NUMBER} [skip ci]" || echo "No changes to commit"
                             git push https://${GIT_TOKEN}@github.com/${GIT_USER}/${GIT_REPO}.git master
                         """
                     }
@@ -82,10 +83,11 @@ pipeline {
     
     post {
         success {
-            echo "✅ Félicitations Aya ! L'image est sur Docker Hub et GitHub est à jour."
+            echo "✅ Pipeline réussi pour ${IMAGE_NAME} !"
+            echo "Nouvelle image : ${DOCKER_REPO}:${BUILD_NUMBER}"
         }
         failure {
-            echo "❌ Le pipeline a échoué. Vérifie la console Jenkins."
+            echo "❌ Échec du pipeline. Vérifiez les permissions Docker Hub ou le chemin Git."
         }
     }
 }
