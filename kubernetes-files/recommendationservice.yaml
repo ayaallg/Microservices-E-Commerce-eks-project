@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/recommendationservice:1
+        image: ayaallg/recommendationservice:2
         ports:
         - containerPort: 8080
         readinessProbe:
