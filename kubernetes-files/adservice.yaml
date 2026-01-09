@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/adservice:4
+        image: ayaallg/adservice:5
         ports:
         - containerPort: 9555
         env:
