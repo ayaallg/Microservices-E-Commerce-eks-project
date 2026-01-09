@@ -27,7 +27,7 @@ spec:
                 - ALL
             privileged: false
             readOnlyRootFilesystem: true
-          image: ayaallg/checkoutservice:1
+          image: ayaallg/checkoutservice:2
           ports:
           - containerPort: 5050
           readinessProbe:
