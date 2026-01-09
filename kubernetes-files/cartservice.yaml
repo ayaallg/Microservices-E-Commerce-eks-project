@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/cartservice:7
+        image: ayaallg/cartservice:8
         ports:
         - containerPort: 7070
         env:
