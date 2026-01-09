@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/paymentservice:1
+        image: ayaallg/paymentservice:2
         ports:
         - containerPort: 50051
         env:
