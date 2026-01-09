@@ -28,7 +28,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/currencyservice:6
+        image: ayaallg/currencyservice:8
         ports:
         - name: grpc
           containerPort: 7000
