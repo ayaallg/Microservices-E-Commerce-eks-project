@@ -27,7 +27,7 @@ spec:
               - ALL
           privileged: false
           readOnlyRootFilesystem: true
-        image: ayaallg/shippingservice:1
+        image: ayaallg/shippingservice:2
         ports:
         - containerPort: 50051
         env:
