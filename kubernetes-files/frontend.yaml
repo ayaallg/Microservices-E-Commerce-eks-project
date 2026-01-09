@@ -29,7 +29,7 @@ spec:
                 - ALL
             privileged: false
             readOnlyRootFilesystem: true
-          image: ayaallg/frontend:4
+          image: ayaallg/frontend:5
           ports:
           - containerPort: 8080
           readinessProbe:
